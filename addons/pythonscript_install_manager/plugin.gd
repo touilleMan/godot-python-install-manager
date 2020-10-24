@@ -2,22 +2,21 @@ tool
 extends EditorPlugin
 
 const menu_item_name = "Manage Python..."
-
-var settings_node
+var manager_node
 
 func _enter_tree():
-    add_tool_menu_item(menu_item_name, self, "_manage_python_clicked")
-    settings_node = preload("settings.tscn").instance()
-    get_editor_interface().get_editor_viewport().add_child(settings_node)
+    add_tool_menu_item(menu_item_name, self, "_menu_item_clicked")
+    manager_node = preload("manager.tscn").instance()
+    get_editor_interface().get_editor_viewport().add_child(manager_node)
 
 func _exit_tree():
     remove_tool_menu_item(menu_item_name)
-    if settings_node:
-        settings_node.queue_free()
-        settings_node = null
+    if manager_node:
+        manager_node.queue_free()
+        manager_node = null
 
-func _manage_python_clicked(arg):
-    settings_node.popup_centered()
+func _menu_item_clicked(arg):
+    manager_node.popup_centered()
 
 func enable_plugin():
-    settings_node.popup_centered()
+    manager_node.popup_centered()

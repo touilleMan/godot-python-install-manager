@@ -1,0 +1,111 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://addons/pythonscript_install_manager/manager.gd" type="Script" id=1]
+
+[node name="manage" type="WindowDialog"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 192.0
+margin_top = 60.0
+margin_right = -192.0
+margin_bottom = -60.0
+rect_min_size = Vector2( 640, 480 )
+window_title = "Manage Python Install"
+resizable = true
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="container" type="VBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+margin_left = -200.0
+margin_right = 200.0
+margin_bottom = 480.0
+grow_horizontal = 2
+rect_min_size = Vector2( 640, 480 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="addons_tree" type="Tree" parent="container"]
+margin_right = 640.0
+margin_bottom = 300.0
+rect_min_size = Vector2( 600, 300 )
+columns = 3
+hide_folding = true
+hide_root = true
+select_mode = 1
+
+[node name="VSplitContainer2" type="VSplitContainer" parent="container"]
+margin_top = 304.0
+margin_right = 640.0
+margin_bottom = 314.0
+rect_min_size = Vector2( 0, 10 )
+
+[node name="upgrade_button" type="Button" parent="container"]
+margin_top = 318.0
+margin_right = 640.0
+margin_bottom = 338.0
+disabled = true
+text = "upgrade"
+
+[node name="VSplitContainer3" type="VSplitContainer" parent="container"]
+margin_top = 342.0
+margin_right = 640.0
+margin_bottom = 352.0
+rect_min_size = Vector2( 0, 10 )
+
+[node name="retreive_latests_version_task_container" type="VBoxContainer" parent="container"]
+visible = false
+margin_top = 356.0
+margin_right = 640.0
+margin_bottom = 392.0
+
+[node name="label" type="Label" parent="container/retreive_latests_version_task_container"]
+margin_right = 640.0
+margin_bottom = 14.0
+text = "Fetching update info: Pythonscript"
+align = 1
+
+[node name="VSplitContainer" type="VSplitContainer" parent="container/retreive_latests_version_task_container"]
+margin_top = 18.0
+margin_right = 640.0
+margin_bottom = 18.0
+
+[node name="progress_bar" type="ProgressBar" parent="container/retreive_latests_version_task_container"]
+margin_top = 22.0
+margin_right = 640.0
+margin_bottom = 36.0
+value = 66.0
+
+[node name="VSplitContainer4" type="VSplitContainer" parent="container"]
+margin_top = 356.0
+margin_right = 640.0
+margin_bottom = 366.0
+rect_min_size = Vector2( 0, 10 )
+
+[node name="upgrade_task_container" type="VBoxContainer" parent="container"]
+visible = false
+margin_top = 370.0
+margin_right = 640.0
+margin_bottom = 406.0
+
+[node name="label" type="Label" parent="container/upgrade_task_container"]
+margin_right = 640.0
+margin_bottom = 14.0
+text = "Upgrading..."
+align = 1
+
+[node name="VSplitContainer" type="VSplitContainer" parent="container/upgrade_task_container"]
+margin_top = 18.0
+margin_right = 640.0
+margin_bottom = 18.0
+
+[node name="progress_bar" type="ProgressBar" parent="container/upgrade_task_container"]
+margin_top = 22.0
+margin_right = 640.0
+margin_bottom = 36.0
+[connection signal="about_to_show" from="." to="." method="_on_manage_about_to_show"]
+[connection signal="pressed" from="container/upgrade_button" to="." method="_on_upgrade_button_pressed"]
