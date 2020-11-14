@@ -106,7 +106,7 @@ func _on_upgrade_button_pressed():
 		return
 	_upgrade_thread = Thread.new()
 	if _upgrade_thread.start(self, "_do_upgrade_from_thread") != OK:
-		print("Error: cannot start upgrade thread")
+		push_error("Error: cannot start upgrade thread")
 		$container/upgrade_button.disabled = false
 
 
@@ -126,9 +126,9 @@ func _do_upgrade_from_thread(args):
 		var addon = addons[i]
 		progress_bar.call_deferred("value", (i + 1) * 100 / (len(addons) + 1))
 		label.call_deferred("text", "Upgrading: %s" % addon.display_name)
-		var ret = yield(addon.upgrade_to_latest_version(), "completed")
+		var ret = yield(addon.upgrade_to_version("latest"), "completed")
 		if ret[0] != OK:
-			print("Error while upgrading %s: %s" % [addon.display_name, ret[1]])
+			push_error("Error while upgrading %s: %s" % [addon.display_name, ret[1]])
 
 	$container/upgrade_task_container.call_deferred("hide")
 	$container/upgrade_button.call_deferred("set", "disabled", not _upgrade_needed())
@@ -156,21 +156,15 @@ func _do_retreive_latest_versions():
 	var progress_bar = $container/retreive_latests_version_task_container/progress_bar
 	progress_bar.value = 1
 
-	var http_request = HTTPRequest.new()
-	http_request.use_threads = true
-	http_request.timeout = 30
-	add_child(http_request)
-
 	for i in range(0, len(addons)):
 		var addon = addons[i]
 		progress_bar.value = (i + 1) * 100 / (len(addons) + 1)
 		label.text = "Fetching update info: %s" % addon.display_name
-		var ret = yield(addon.fetch_latest_version_info(http_request), "completed")
+		var ret = yield(addon.fetch_upgrade_info(), "completed")
 		if ret[0] != OK:
-			print("Error while fetching %s update info: %s" % [addon.display_name, ret[1]])
+			push_error("Error while fetching %s update info: %s" % [addon.display_name, ret[1]])
 
 	# Teardown stuff, must stay last !
-	remove_child(http_request)
 	_retreive_latest_versions_task = null
 	$container/retreive_latests_version_task_container.hide()
 	$container/upgrade_button.disabled = not _upgrade_needed()

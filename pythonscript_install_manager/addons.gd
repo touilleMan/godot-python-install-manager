@@ -1,10 +1,11 @@
+tool
 extends Object
 
 
 const Addon = preload("addon.gd")
 
 
-static func get_install_manager_addon() -> Addon:
+static func get_pythonscript_addon() -> Addon:
 	return Addon.new(
 		"pythonscript",
 		"Pythonscript",
@@ -12,7 +13,7 @@ static func get_install_manager_addon() -> Addon:
 	)
 
 
-static func get_pythonscript_addon() -> Addon:
+static func get_install_manager_addon() -> Addon:
 	return Addon.new(
 		"pythonscript_install_manager",
 		"Install Manager",
