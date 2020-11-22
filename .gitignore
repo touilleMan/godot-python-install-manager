@@ -1,0 +1,29 @@
+# Python stuff
+/venv*
+__pycache__
+*.pyc
+.mypy_cache
+
+# IDE stuff
+.vs
+.vscode
+.idea
+
+# mac os thumbs files
+.DS_Store
+
+# Godot import folders
+.import
+.cache
+
+# Godot runtime logs
+logs
+
+# Scons build artefact
+.sconsign.dblite
+
+# scons stuff
+/custom.py
+
+# Build directory
+/build/
