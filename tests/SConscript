@@ -1,0 +1,223 @@
+import re
+import json
+import subprocess
+from traceback import print_exc
+from pathlib import Path
+from contextlib import contextmanager
+from threading import Thread, Event
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from SCons.Errors import UserError
+
+
+Import("env")
+
+
+class GithubServerMock:
+    def __init__(self):
+        self.server = None
+        self._started = Event()
+        self.plugins = {
+            "godot-python-install-manager": [],
+            "godot-python": [],
+        }
+
+    def add_release(self, name, data_path=None):
+        match = re.search(r"^(.*)-([0-9]+\.[0-9]+\.[0-9]+)", name)
+        assert match
+        plugin_name = match.group(1)
+        version = match.group(2)
+        tag_name = f"v{version}"
+        version = [int(x) for x in version.split('.')]
+        releases = self.plugins[plugin_name]
+        release_new_asset = {
+            "name": name,
+            "browser_download_url": f"http://localhost:{self.port}/files/{data_path}"
+        }
+        for release in releases:
+            if release["tag_name"] == tag_name:
+                release["assets"].append(release_new_asset)
+                break
+        else:
+            release = {
+                "prerelease": False,
+                "tag_name": tag_name,
+                "assets": [release_new_asset]
+            }
+            releases.append(release)
+
+    @property
+    def port(self):
+        return self.server.server_port
+
+    def _run(self):
+        class HTTPRequestHandler(BaseHTTPRequestHandler):
+            def do_GET(handler_self):
+                return self._do_GET(handler_self)
+
+        assert self.server is None
+        with HTTPServer(("", 0), HTTPRequestHandler) as self.server:
+            print(f'==> listen on {self.port}')
+            self._started.set()
+            self.server.serve_forever()
+
+    def _stop(self):
+        self.server.shutdown()
+
+    def _do_GET(self, request):
+        print('===>', request.path)
+
+        if request.path.startswith("/files/"):
+            file = Path(request.path[len("/files/"):])
+            if not file.is_file():
+                request.send_response(404)
+                request.end_headers()
+                return
+            else:
+                data = file.read_bytes()
+                request.send_response(200)
+                request.send_header("content-type", "application/zip")
+                request.send_header("content-length", len(data))
+                request.end_headers()
+                request.wfile.write(data)
+                return
+
+        for plugin_name, plugin_releases in self.plugins.items():
+            if request.path == f"/{plugin_name}/releases":
+                data = json.dumps(plugin_releases).encode("utf-8")
+                request.send_response(200)
+                request.send_header("content-type", "application/json")
+                request.send_header("content-length", len(data))
+                request.end_headers()
+                request.wfile.write(data)
+                return
+        else:
+            request.send_response(404)
+            request.end_headers()
+            return
+
+    @classmethod
+    @contextmanager
+    def run(cls, project_dir):
+        gh = cls()
+
+        thread = Thread(target=gh._run, daemon=True)
+        thread.start()
+        gh._started.wait()
+        try:
+            # Patch install manager plugin config to head to our fake github api server
+            addons_gd = Path(f"{project_dir}/addons/pythonscript_install_manager/addons.gd")
+            addons_gd.write_text(
+                addons_gd.read_text().replace(
+                    "https://api.github.com/repos/touilleMan", f"http://localhost:{gh.port}"
+                )
+            )
+            yield gh
+        finally:
+            gh._stop()
+            thread.join()
+
+
+def test_factory(target, action):
+    target_project_dir = Dir(f"#build/tests/test_{target}_project")
+    env.Command(
+        target=target_project_dir,
+        source=env["DIST_ROOT"],
+        action=[
+            Delete("$TARGET"),
+            Copy(dest="$TARGET", src=env.Dir("test_project")),
+            Copy(dest="$TARGET/addons", src="$DIST_ROOT/addons"),
+        ]
+    )
+    env.Clean(target_project_dir, target_project_dir)
+    env.AlwaysBuild(target_project_dir)
+
+    env.Command(
+        target=[target],
+        source=[target_project_dir],
+        action=action
+    )
+    env.Depends(target, env["godot_binary"])
+    env.AlwaysBuild(target)
+
+    return target
+
+
+# Decorator to apply on test functions
+def test(test_function):
+    return test_factory(test_function.__name__, test_function)
+
+
+def run_cmd(cmd):
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    print(' '.join(cmd))
+    try:
+        out = subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Error !!! Non-zero return code: {exc.returncode}")
+        print()
+        print(f"stdout: {exc.stdout.decode()}")
+        print()
+        print(f"stderr: {exc.stderr.decode()}")
+        raise UserError(f"Test has failed (returncode: {exc.returncode})") from exc
+    # See https://github.com/godotengine/godot/issues/30207
+    if "SCRIPT ERROR:" in out.stdout.decode():
+        print(f"Godot error detected !!!")
+        print()
+        print(f"stdout: {out.stdout.decode()}")
+        print()
+        print(f"stderr: {out.stderr.decode()}")
+        raise UserError(f"Test has failed (Godot error)")
+
+    @contextmanager
+    def _error_context():
+        try:
+            yield
+        except Exception as exc:
+            print(f"Test failure !!!")
+            print()
+            print_exc()
+            print()
+            print(f"stdout: {out.stdout.decode()}")
+            print()
+            print(f"stderr: {out.stderr.decode()}")
+            raise UserError(f"Test has failed {exc}") from exc
+
+    out.error_context = _error_context
+
+    return out
+
+
+def run_cli(project_path, cmd):
+    return run_cmd(f"{env['godot_binary']} --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}")
+
+
+@test
+def test_cli_no_arguments(target, source, env):
+    out = run_cli(source[0], "")
+    with out.error_context():
+        stdout = out.stdout.decode()
+        assert "Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]" in stdout
+
+
+@test
+def test_cli_info(target, source, env):
+    out = run_cli(source[0], "info")
+    with out.error_context():
+        stdout = out.stdout.decode()
+        assert "Install Manager: " in stdout
+        assert "Pythonscript: Not installed" in stdout
+
+
+@test
+def test_cli_self_list_versions(target, source, env):
+    with GithubServerMock.run(source[0]) as gh:
+        gh.add_release("godot-python-install-manager-1.0.0-godot3.zip")
+        gh.add_release("godot-python-install-manager-1.1.0-godot3.zip")
+        # Incompatible versions
+        gh.add_release("godot-python-install-manager-2.0.0-godot42.zip")
+        gh.add_release("godot-python-install-manager-2.0.0-godot3-NotSupported.zip")
+        out = run_cli(source[0], "self_list_versions")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            print(stdout)
