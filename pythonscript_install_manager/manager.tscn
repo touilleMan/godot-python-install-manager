@@ -48,7 +48,6 @@ rect_min_size = Vector2( 0, 10 )
 margin_top = 318.0
 margin_right = 640.0
 margin_bottom = 338.0
-disabled = true
 text = "upgrade"
 
 [node name="VSplitContainer3" type="VSplitContainer" parent="container"]
