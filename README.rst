@@ -12,12 +12,12 @@ Godot Python Install Manager
    :target: https://github.com/touilleMan/godot-python/
 
 This project aims at providing a better way to install
-`Godot Python <https://github.com/touilleMan/godot-python/>`.
+`Godot Python <https://github.com/touilleMan/godot-python/>`_.
 
 Usage
 -----
 
-First install Godot Python Install Manager from the `Godot asset library <https://godotengine.org/asset-library/asset>` (TODO: this project is WIP and so not available yet on the asset library ^^).
+First install Godot Python Install Manager from the `Godot asset library <https://godotengine.org/asset-library/asset>`_ (TODO: this project is WIP and so not available yet on the asset library ^^).
 
 The resulting `addons/godot-python-install-manager` folder is quite small (it only contains a couple of GDScript files), so you can commit it into your project.
 
@@ -33,25 +33,27 @@ Bonus
 
 Godot Python Install Manager comes with a CLI for more advanced use-cases (like installing a specific version of Godot Python):
 
-```shell
-$ cd ~/my/godot/project
-$ godot --script res://addons/godot_python_install_manager/cli.gd
-[...]
-Usage: godot [--path <project_path>] [--no-window] --script res://addons/godot_python_install_manager/cli.gd [options]
-info: Display installed versions info
-self_upgrade [<VERSION>]: Upgrade the install manager (this tool)
-install [<VERSION>]: Ensure Godot Python addon is installed
-upgrade [<VERSION>]: Upgrade the installed version of Godot Python addon
-list_versions: List Godot Python addon versions compatible with your OS/Godot version
-self_list_versions: List install manager versions compatible with your OS/Godot version
-```
+.. code-block::
+
+    $ cd ~/my/godot/project
+    $ godot --script res://addons/godot_python_install_manager/cli.gd
+    [...]
+    Usage: godot [--path <project_path>] [--no-window] --script res://addons/godot_python_install_manager/cli.gd [options]
+    info: Display installed versions info
+    self_upgrade [<VERSION>]: Upgrade the install manager (this tool)
+    install [<VERSION>]: Ensure Godot Python addon is installed
+    upgrade [<VERSION>]: Upgrade the installed version of Godot Python addon
+    list_versions: List Godot Python addon versions compatible with your OS/Godot version
+    self_list_versions: List install manager versions compatible with your OS/Godot version
 
 Typically for installing Godot Python in version `0.60.0`:
-```shell
-$ godot --path ~/my/godot/project --no-window --script res://addons/godot_python_install_manager/cli.gd install 0.60.0
-```
+
+.. code-block::
+
+    $ godot --path ~/my/godot/project --no-window --script res://addons/godot_python_install_manager/cli.gd install 0.60.0
 
 Or for upgrading an existing installation of Godot Python to the latest version:
-```shell
-$ godot --path ~/my/godot/project --no-window --script res://addons/godot_python_install_manager/cli.gd upgrade
-```
+
+.. code-block::
+
+    $ godot --path ~/my/godot/project --no-window --script res://addons/godot_python_install_manager/cli.gd upgrade
