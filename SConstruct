@@ -158,7 +158,7 @@ def generate_release(target, source, env):
 
 
 release = env.Command(
-    target="build/godot-python-installer-manager-${release_suffix}-godot3.zip",
+    target="build/godot_python_install_manager-${release_suffix}-godot3.zip",
     source=env["DIST_ROOT"],
     action=generate_release,
 )

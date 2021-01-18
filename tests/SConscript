@@ -264,9 +264,9 @@ def _list_version_testbed(cmd, plugin, source):
 
 @test
 def test_cli_list_versions(target, source, env):
-    _list_version_testbed("list_versions", "godot-python", source)
+    _list_version_testbed("list_versions", "godot_python", source)
 
 
 @test
 def test_cli_self_list_versions(target, source, env):
-    _list_version_testbed("self_list_versions", "godot-python-install-manager", source)
+    _list_version_testbed("self_list_versions", "godot_python_install_manager", source)
