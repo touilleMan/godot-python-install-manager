@@ -75,7 +75,7 @@ class GithubServerMock:
                 return
 
         for plugin_name, plugin_releases in self.plugins.items():
-            if request.path == f"/{plugin_name}/releases":
+            if request.path == f"/{plugin_name.replace('_', '-')}/releases":
                 data = json.dumps(plugin_releases).encode("utf-8")
                 request.send_response(200)
                 request.send_header("content-type", "application/json")
