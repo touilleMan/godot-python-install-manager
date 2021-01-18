@@ -61,6 +61,7 @@ func _cmd_self_upgrade(args: Array) -> int:
 	addon.free()
 	return ret
 
+
 func _cmd_upgrade(args: Array) -> int:
 	yield(Utils.noop_yield(), "completed")  # Ensure we return a coroutine no matter what
 
@@ -82,8 +83,8 @@ func _cmd_install(args: Array) -> int:
 	var addon = Addons.new_godot_python_addon()
 	var current_version = addon.get_current_version(true)
 	if current_version != null:
+		print("%s is already installed in version %s" % [addon.display_name, addon.get_current_version(true)])
 		addon.free()
-		print("%s is already installed in version %s" % [addon.display_name, current_version])
 		return 0
 
 	else:
@@ -107,7 +108,7 @@ func _upgrade_addon(addon, version) -> int:
 	else:
 		if version == "latest":
 			version = addon.get_latest_version(true)
-		print("Upgrading to version %s" % addon.get_latest_version(true))
+		print("Upgrading %s to version %s" % [addon.display_name, addon.get_latest_version(true)])
 		ret = yield(addon.upgrade_to_version(version), "completed")
 		if ret[0] != OK:
 			print("Error: %s" % ret[1])

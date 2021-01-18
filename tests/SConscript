@@ -2,12 +2,12 @@ import sys
 import re
 import json
 import subprocess
+import io
+import zipfile
 from traceback import print_exc
 from pathlib import Path
 from contextlib import contextmanager
 from threading import Thread, Event
-from zipfile import ZipFile
-from io import BytesIO
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from SCons.Errors import UserError
 
@@ -15,27 +15,60 @@ from SCons.Errors import UserError
 Import("env")
 
 
-def make_release_archive(addon, version):
-    buff = BytesIO()
-    zf = ZipFile(buff, mode="w")
-    zf.writestr(
-        f"{addon}/plugin.cfg",
-        f"""
-[plugin]
-name="{addon}"
-author="Godot Python Team"
-version="{version}"
-script="plugin.gd"
-""",
-    )
+def make_install_manager_release_archive(project_dir, version):
+    # Just use the current build and change the version in plugin.cfg
+    buff = io.BytesIO()
+    zf = zipfile.ZipFile(buff, mode="w", compression=zipfile.ZIP_STORED, allowZip64=False)
+    addon_dir = Path(f"{project_dir}/addons/godot_python_install_manager").resolve()
+    for item in addon_dir.rglob("*"):
+        if item.is_dir():
+            continue
+        if item.name == "plugin.cfg":
+            data = re.sub('version="[0-9.]+"', f'version="{version}"', item.read_text())
+        else:
+            data = item.read_bytes()
+        zf.writestr(f"addons/godot_python_install_manager/{item.relative_to(addon_dir)}", data)
+    zf.close()
     buff.seek(0)
     data = buff.read()
-    zf.close()
     return data
 
 
+def make_godot_python_release_archive(project_dir, version):
+    # TODO: use a real build of Godot Python !!!
+    buff = io.BytesIO()
+    zf = zipfile.ZipFile(buff, mode="w", compression=zipfile.ZIP_STORED, allowZip64=False)
+    addon_dir = Path(f"{project_dir}/addons/godot_python_install_manager").resolve()
+    for item in addon_dir.rglob("*"):
+        if item.is_dir():
+            continue
+        if item.name == "plugin.cfg":
+            data = re.sub('version="[0-9.]+"', f'version="{version}"', item.read_text())
+        else:
+            data = item.read_bytes()
+        zf.writestr(f"addons/godot_python/{item.relative_to(addon_dir)}", data)
+    zf.close()
+    buff.seek(0)
+    data = buff.read()
+    return data
+
+
+def get_supported_godot_feature():
+    if sys.platform == "linux":
+        return "X11"
+    elif sys.platform == "darwin":
+        return "OSX"
+    elif sys.platform == "win32":
+        return "Windows"
+    else:
+        raise RuntimeError(
+            f"Cannot determine a suitable supported feature for Godot on this platform ({sys.platform})"
+        )
+
+
 class GithubServerMock:
-    def __init__(self):
+    def __init__(self, project_dir):
+        self.project_dir = project_dir
         self.server = None
         self._started = Event()
         self.addons = {"godot_python_install_manager": [], "godot_python": []}
@@ -47,11 +80,11 @@ class GithubServerMock:
         version = match.group(2)
         tag_name = f"v{version}"
         releases = self.addons[addon_name]
-        release_new_asset = {
-            "name": name,
-            # "browser_download_url": f"http://127.0.0.1:{self.port}/files/{data_path}",
-            "browser_download_url": f"http://127.0.0.1:{self.port}/releases/{addon_name}/{version}",
-        }
+        if data_path:
+            browser_download_url = f"http://127.0.0.1:{self.port}/files/{data_path}"
+        else:
+            browser_download_url = f"http://127.0.0.1:{self.port}/releases/{addon_name}/{version}"
+        release_new_asset = {"name": name, "browser_download_url": browser_download_url}
         for release in releases:
             if release["tag_name"] == tag_name:
                 release["assets"].append(release_new_asset)
@@ -97,7 +130,14 @@ class GithubServerMock:
 
         if request.path.startswith("/releases/"):
             _, _, addon_name, addon_release = request.path.split("/")
-            data = make_release_archive(addon_name, addon_release)
+            if addon_name == "godot_python_install_manager":
+                data = make_install_manager_release_archive(self.project_dir, addon_release)
+            elif addon_name == "godot_python":
+                data = make_godot_python_release_archive(self.project_dir, addon_release)
+            else:
+                request.send_response(404)
+                request.end_headers()
+                return
             request.send_response(200)
             request.send_header("content-type", "application/zip")
             request.send_header("content-length", len(data))
@@ -122,7 +162,7 @@ class GithubServerMock:
     @classmethod
     @contextmanager
     def run(cls, project_dir):
-        gh = cls()
+        gh = cls(project_dir)
 
         thread = Thread(target=gh._run, daemon=True)
         thread.start()
@@ -254,16 +294,7 @@ def test_cli_info(target, source, env):
 
 
 def _list_version_testbed(cmd, addon, source):
-    if sys.platform == "linux":
-        supported_feature = "X11"
-    elif sys.platform == "darwin":
-        supported_feature = "OSX"
-    elif sys.platform == "win32":
-        supported_feature = "Windows"
-    else:
-        raise RuntimeError(
-            f"Cannot determine a suitable supported feature for Godot on this platform ({sys.platform})"
-        )
+    supported_feature = get_supported_godot_feature()
 
     with GithubServerMock.run(source[0]) as gh:
         # No versions at all
@@ -274,8 +305,8 @@ def _list_version_testbed(cmd, addon, source):
 
         # Only incompatible versions
         gh.add_release(f"{addon}-2.0.0-godot42.zip")
-        gh.add_release(f"{addon}-2.0.0-godot3-NotSupported.zip")
-        gh.add_release(f"{addon}-2.0.0-godot3-{supported_feature}-NotSupported.zip")
+        gh.add_release(f"{addon}-2.0.0-godot3-NotSupportedFeature.zip")
+        gh.add_release(f"{addon}-2.0.0-godot3-{supported_feature}-NotSupportedFeature.zip")
         out = run_cli(source[0], cmd, expected_returncode=1)
         with out.error_context():
             stdout = out.stdout.decode()
@@ -310,16 +341,7 @@ def test_cli_self_list_versions(target, source, env):
 
 @test
 def test_cli_self_update(target, source, env):
-    if sys.platform == "linux":
-        supported_feature = "X11"
-    elif sys.platform == "darwin":
-        supported_feature = "OSX"
-    elif sys.platform == "win32":
-        supported_feature = "Windows"
-    else:
-        raise RuntimeError(
-            f"Cannot determine a suitable supported feature for Godot on this platform ({sys.platform})"
-        )
+    supported_feature = get_supported_godot_feature()
 
     with GithubServerMock.run(source[0]) as gh:
         # No versions at all
@@ -336,8 +358,117 @@ def test_cli_self_update(target, source, env):
             assert "No compatible version found" in stdout
 
         # Now we do the upgrade !
-        gh.add_release("godot_python_install_manager-2.0.0-godot3.zip", data_path="")
-        out = run_cli(source[0], "self_upgrade 2.0.0", expected_returncode=1)
+        gh.add_release("godot_python_install_manager-2.0.0-godot3.zip")
+        out = run_cli(source[0], "self_upgrade 2.0.0")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Upgrading Install Manager to version 2.0.0" in stdout
+
+        # Make sure the new version is installed
+        out = run_cli(source[0], "info")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Install Manager: 2.0.0" in stdout
+
+        # Upgrade to a new latest version
+        gh.add_release("godot_python_install_manager-2.0.1-godot3.zip")
+        out = run_cli(source[0], "self_upgrade")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Upgrading Install Manager to version 2.0.1" in stdout
+
+        # Make sure the new version is installed
+        out = run_cli(source[0], "info")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Install Manager: 2.0.1" in stdout
+
+
+@test
+def test_cli_install(target, source, env):
+    supported_feature = get_supported_godot_feature()
+
+    with GithubServerMock.run(source[0]) as gh:
+        # No versions at all
+        out = run_cli(source[0], "install", expected_returncode=1)
         with out.error_context():
             stdout = out.stdout.decode()
             assert "No compatible version found" in stdout
+
+        # Only incompatible versions
+        gh.add_release("godot_python-2.0.0-godot42.zip")
+        out = run_cli(source[0], "install", expected_returncode=1)
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "No compatible version found" in stdout
+
+        # Now we do the install !
+        gh.add_release("godot_python-2.0.0-godot3.zip")
+        out = run_cli(source[0], "install 2.0.0")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Upgrading Godot Python to version 2.0.0" in stdout
+
+        # Make sure the version is installed
+        out = run_cli(source[0], "info")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Godot Python: 2.0.0" in stdout
+
+        # Retry the install should not do anything...
+        out = run_cli(source[0], "install")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Godot Python is already installed in version 2.0.0" in stdout
+
+        # ...even if a newer version is now available
+        gh.add_release("godot_python-2.0.1-godot3.zip")
+        out = run_cli(source[0], "install")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Godot Python is already installed in version 2.0.0" in stdout
+
+
+@test
+def test_cli_update(target, source, env):
+    supported_feature = get_supported_godot_feature()
+
+    with GithubServerMock.run(source[0]) as gh:
+        # No versions at all
+        out = run_cli(source[0], "upgrade", expected_returncode=1)
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "No compatible version found" in stdout
+
+        # Only incompatible versions
+        gh.add_release("godot_python-2.0.0-godot42.zip")
+        out = run_cli(source[0], "upgrade 2.0.0", expected_returncode=1)
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "No compatible version found" in stdout
+
+        # Now we do the upgrade !
+        gh.add_release("godot_python-2.0.0-godot3.zip")
+        out = run_cli(source[0], "upgrade 2.0.0")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Upgrading Godot Python to version 2.0.0" in stdout
+
+        # Make sure the new version is installed
+        out = run_cli(source[0], "info")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Godot Python: 2.0.0" in stdout
+
+        # Upgrade to a new latest version
+        gh.add_release("godot_python-2.0.1-godot3.zip")
+        out = run_cli(source[0], "upgrade")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Upgrading Godot Python to version 2.0.1" in stdout
+
+        # Make sure the new version is installed
+        out = run_cli(source[0], "info")
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "Godot Python: 2.0.1" in stdout

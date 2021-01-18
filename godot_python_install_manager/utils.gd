@@ -11,7 +11,7 @@ static func get_root_node() -> Node:
 	if(main_loop != null):
 		return main_loop.root
 	else:
-		push_error('No Main Loop Yet')
+		print('ERROR: No Main Loop Yet')
 		return null
 
 
@@ -76,6 +76,14 @@ static func rm(path: String) -> int:
 		return OS.execute("sh", ["-c", "test -e '%s' && rm '%s'" % [path, path]])
 
 
+static func exists(path: String) -> int:
+	# !!!! Retuns 0 if the entry exists !!!
+	if OS.has_feature("Windows"):
+		return OS.execute("cmd.exe", ["-c", 'exist "%s"' % path])
+	else:
+		return OS.execute("sh", ["-c", "test -e '%s'" % path])
+
+
 static func mv(old_path: String, new_path: String) -> int:
 	if OS.has_feature("Windows"):
 		old_path = old_path.replace("/", "\\")
@@ -89,44 +97,43 @@ static func unzip(zip_path: String, target_path: String, filter: String = "") ->
 	var gdunzip = GDUnzip.new()
 	var loaded = gdunzip.load(zip_path)
 	if loaded != true:
-		push_error("Cannot load zip file %s" % zip_path)
+		print("ERROR: Cannot load zip file %s" % zip_path)
 		return FAILED
 
-	var filenames
+	var file_pathes
 	if filter == "":
-		filenames = gdunzip.files.keys()
+		file_pathes = gdunzip.files.keys()
 	else:
 		var filter_regex = RegEx.new()
 		filter_regex.compile(filter)
-		filenames = []
-		for f in gdunzip.files:
-			var file_name = f["file_name"]
-			if filter_regex.search(file_name):
-				filenames.push_back(file_name)
+		file_pathes = []
+		for file_path in gdunzip.files.keys():
+			if filter_regex.search(file_path):
+				file_pathes.push_back(file_path)
 
 	# First create all needed directories
 	var directories = {}
-	for file_name in filenames:
+	for file_name in file_pathes:
 		var dir_path = "%s/%s" % [target_path, file_name.get_base_dir()]
 		directories[dir_path] = null
 	var dir = Directory.new()
 	for dir_path in directories.keys():
 		var make_dir_res = dir.make_dir_recursive(dir_path)
 		if make_dir_res != OK:
-			push_error("Cannot create directory `%s` from zip %s" % [dir_path, zip_path])
+			print("ERROR: Cannot create directory `%s` from zip %s" % [dir_path, zip_path])
 			return FAILED
 
 	# Then extract all files
-	for file_name in filenames:
+	for file_name in file_pathes:
 		var uncompressed = gdunzip.uncompress(file_name)
-		if uncompressed == false:
-			push_error("Cannot uncompresse `%s` from zip %s" % [file_name, zip_path])
+		if uncompressed is bool and uncompressed == false:
+			print("ERROR: Cannot uncompresse `%s` from zip %s" % [file_name, zip_path])
 			return FAILED
 		var file = File.new()
 		var file_path = "%s/%s" % [target_path, file_name]
 		var file_open_res = file.open(file_path, File.WRITE)
 		if file_open_res != OK:
-			push_error("Cannot create file %s: error %s" % [file_path, file_open_res])
+			print("ERROR: Cannot create file %s: error %s" % [file_path, file_open_res])
 			return FAILED
 		file.store_buffer(uncompressed)
 		file.close()

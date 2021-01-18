@@ -63,10 +63,11 @@ func upgrade_to_version(version: String):
 
 	# 2) Move current version with a temporary name
 	# This may fail on Windows if some files are already in use
-	print("Move %s -> %s" % [target_path, old_data_tmp_path])
-	if Utils.mv(target_path, old_data_tmp_path) != 0:
-		var msg = "Cannot remove %s, is it in use ?" % target_path
-		return [FAILED, msg]
+	if Utils.exists(target_path) == 0:
+		print("Move %s -> %s" % [target_path, old_data_tmp_path])
+		if Utils.mv(target_path, old_data_tmp_path) != 0:
+			var msg = "Cannot remove %s, is it in use ?" % target_path
+			return [FAILED, msg]
 
 	# 3) Extract new version, it becomes the current version
 	print("Extracting %s" % archive_path)
@@ -78,8 +79,9 @@ func upgrade_to_version(version: String):
 		return [FAILED, msg]
 
 	# 4) Remove old version and new version archive
-	print("Removing %s" % old_data_tmp_path)
-	Utils.rmdir(old_data_tmp_path)
+	if Utils.exists(old_data_tmp_path) == 0:
+		print("Removing %s" % old_data_tmp_path)
+		Utils.rmdir(old_data_tmp_path)
 	print("Removing %s" % archive_path)
 	Utils.rm(archive_path)
 
