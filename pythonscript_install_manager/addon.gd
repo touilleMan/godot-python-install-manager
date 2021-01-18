@@ -112,17 +112,28 @@ func fetch_upgrade_info(force: bool=false):
 		if release["prerelease"]:
 			continue
 		for asset in release["assets"]:
+			print('testing ', asset["name"])
 			var regex_result = _package_regex.search(asset["name"])
 			if regex_result:
+				print(asset["name"], "regex ok")
 				var required_godot_version_major = regex_result.get_string("godot_version_major")
 				if required_godot_version_major and int(required_godot_version_major) != godot_version_major:
+					print(asset["name"], " major version ko ", int(required_godot_version_major), " != ", godot_version_major)
 					continue
 				var required_godot_version_minor = regex_result.get_string("godot_version_minor")
 				if required_godot_version_minor and int(required_godot_version_minor) != godot_version_minor:
+					print(asset["name"], " minor version ko ", int(required_godot_version_minor), " != ", godot_version_minor)
 					continue
+				var has_unsupported_feature = false
 				for required_feature in regex_result.get_string("feature_tags").split("-"):
-					if not OS.has_feature(required_feature):
+					if required_feature == "":
 						continue
+					if not OS.has_feature(required_feature):
+						print(asset["name"], " missing feature ", required_feature)
+						has_unsupported_feature = true
+						break
+				if has_unsupported_feature:
+					continue
 				# This version is compatible !
 				var str_version = regex_result.get_string("version")
 				var version = []

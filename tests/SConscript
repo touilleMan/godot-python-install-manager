@@ -1,3 +1,4 @@
+import sys
 import re
 import json
 import subprocess
@@ -31,7 +32,7 @@ class GithubServerMock:
         releases = self.plugins[plugin_name]
         release_new_asset = {
             "name": name,
-            "browser_download_url": f"http://localhost:{self.port}/files/{data_path}"
+            "browser_download_url": f"http://127.0.0.1:{self.port}/files/{data_path}"
         }
         for release in releases:
             if release["tag_name"] == tag_name:
@@ -43,7 +44,7 @@ class GithubServerMock:
                 "tag_name": tag_name,
                 "assets": [release_new_asset]
             }
-            releases.append(release)
+            self.plugins[plugin_name] = list(reversed(sorted([*releases, release], key=lambda x: x['tag_name'])))
 
     @property
     def port(self):
@@ -56,7 +57,6 @@ class GithubServerMock:
 
         assert self.server is None
         with HTTPServer(("", 0), HTTPRequestHandler) as self.server:
-            print(f'==> listen on {self.port}')
             self._started.set()
             self.server.serve_forever()
 
@@ -64,8 +64,6 @@ class GithubServerMock:
         self.server.shutdown()
 
     def _do_GET(self, request):
-        print('===>', request.path)
-
         if request.path.startswith("/files/"):
             file = Path(request.path[len("/files/"):])
             if not file.is_file():
@@ -108,7 +106,7 @@ class GithubServerMock:
             addons_gd = Path(f"{project_dir}/addons/pythonscript_install_manager/addons.gd")
             addons_gd.write_text(
                 addons_gd.read_text().replace(
-                    "https://api.github.com/repos/touilleMan", f"http://localhost:{gh.port}"
+                    "https://api.github.com/repos/touilleMan", f"http://127.0.0.1:{gh.port}"
                 )
             )
             yield gh
@@ -147,19 +145,47 @@ def test(test_function):
     return test_factory(test_function.__name__, test_function)
 
 
-def run_cmd(cmd):
+def run_cmd(cmd, expected_returncode=0):
+    def _attach_error_context(obj):
+        @contextmanager
+        def _error_context():
+            try:
+                yield
+            except Exception as exc:
+                print(f"Test failure !!!")
+                print()
+                print_exc()
+                print()
+                print(f"stdout: {obj.stdout.decode()}")
+                print()
+                print(f"stderr: {obj.stderr.decode()}")
+                raise UserError(f"Test has failed {exc}") from exc
+
+        obj.error_context = _error_context
+
     if isinstance(cmd, str):
         cmd = cmd.split()
     print(' '.join(cmd))
     try:
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as exc:
+        if expected_returncode == exc.returncode:
+            _attach_error_context(exc)
+            return exc
         print(f"Error !!! Non-zero return code: {exc.returncode}")
         print()
         print(f"stdout: {exc.stdout.decode()}")
         print()
         print(f"stderr: {exc.stderr.decode()}")
         raise UserError(f"Test has failed (returncode: {exc.returncode})") from exc
+    else:
+        if out.stderr:
+            print(f"Error !!! Output to stderr is considered as failure !")
+            print()
+            print(f"stdout: {out.stdout.decode()}")
+            print()
+            print(f"stderr: {out.stderr.decode()}")
+            raise UserError(f"Output to stderr is considered as failure !")
     # See https://github.com/godotengine/godot/issues/30207
     if "SCRIPT ERROR:" in out.stdout.decode():
         print(f"Godot error detected !!!")
@@ -169,27 +195,12 @@ def run_cmd(cmd):
         print(f"stderr: {out.stderr.decode()}")
         raise UserError(f"Test has failed (Godot error)")
 
-    @contextmanager
-    def _error_context():
-        try:
-            yield
-        except Exception as exc:
-            print(f"Test failure !!!")
-            print()
-            print_exc()
-            print()
-            print(f"stdout: {out.stdout.decode()}")
-            print()
-            print(f"stderr: {out.stderr.decode()}")
-            raise UserError(f"Test has failed {exc}") from exc
-
-    out.error_context = _error_context
-
+    _attach_error_context(out)
     return out
 
 
-def run_cli(project_path, cmd):
-    return run_cmd(f"{env['godot_binary']} --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}")
+def run_cli(project_path, cmd, **kwargs):
+    return run_cmd(f"{env['godot_binary']} --verbose --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}", **kwargs)
 
 
 @test
@@ -206,18 +217,56 @@ def test_cli_info(target, source, env):
     with out.error_context():
         stdout = out.stdout.decode()
         assert "Install Manager: " in stdout
-        assert "Pythonscript: Not installed" in stdout
+        assert "Godot Python: Not installed" in stdout
+
+
+def _list_version_testbed(cmd, plugin, source):
+    if sys.platform == "linux":
+        supported_feature = "X11"
+    elif sys.platform == "darwin":
+        supported_feature = "OSX"
+    elif sys.platform == "win32":
+        supported_feature = "Windows"
+    else:
+        raise RuntimeError(
+            f"Cannot determine a suitable supported feature for Godot on this platform ({sys.platform})"
+        )
+
+    with GithubServerMock.run(source[0]) as gh:
+        # No versions at all
+        out = run_cli(source[0], cmd, expected_returncode=1)
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "No compatible version found" in stdout
+
+        # Only incompatible versions
+        gh.add_release(f"{plugin}-2.0.0-godot42.zip")
+        gh.add_release(f"{plugin}-2.0.0-godot3-NotSupported.zip")
+        gh.add_release(f"{plugin}-2.0.0-godot3-{supported_feature}-NotSupported.zip")
+        out = run_cli(source[0], cmd, expected_returncode=1)
+        with out.error_context():
+            stdout = out.stdout.decode()
+            assert "No compatible version found" in stdout
+
+        # Multiple compatible versions
+        gh.add_release(f"{plugin}-1.0.0-godot3.zip")
+        gh.add_release(f"{plugin}-1.1.0-godot3.zip")
+        gh.add_release(f"{plugin}-1.1.1-godot3-{supported_feature}.zip")
+        out = run_cli(source[0], cmd)
+        with out.error_context():
+            stdout = out.stdout.decode()
+        assert f"""Available versions:
+1.1.1 ({plugin}-1.1.1-godot3-{supported_feature}.zip)
+1.1.0 ({plugin}-1.1.0-godot3.zip)
+1.0.0 ({plugin}-1.0.0-godot3.zip)
+""" in stdout
+
+
+@test
+def test_cli_list_versions(target, source, env):
+    _list_version_testbed("list_versions", "godot-python", source)
 
 
 @test
 def test_cli_self_list_versions(target, source, env):
-    with GithubServerMock.run(source[0]) as gh:
-        gh.add_release("godot-python-install-manager-1.0.0-godot3.zip")
-        gh.add_release("godot-python-install-manager-1.1.0-godot3.zip")
-        # Incompatible versions
-        gh.add_release("godot-python-install-manager-2.0.0-godot42.zip")
-        gh.add_release("godot-python-install-manager-2.0.0-godot3-NotSupported.zip")
-        out = run_cli(source[0], "self_list_versions")
-        with out.error_context():
-            stdout = out.stdout.decode()
-            print(stdout)
+    _list_version_testbed("self_list_versions", "godot-python-install-manager", source)

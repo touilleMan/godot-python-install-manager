@@ -33,6 +33,7 @@ static func http_request_factory() -> HTTPRequest:
 static func http_request_destructor(http_request: HTTPRequest):
 	var root = get_root_node()
 	root.remove_child(http_request)
+	http_request.queue_free()
 
 
 static func parse_version(str_version: String):
@@ -152,14 +153,16 @@ static func download(url: String, target_path: String = ""):
 	var status_code = vars[1]
 	var body = vars[3]
 
-	if http_result == HTTPRequest.RESULT_CANT_CONNECT or http_result == HTTPRequest.RESULT_CANT_RESOLVE:
-		var msg = "Cannot reach %s (error %s)" % [
-			url,
-			error
-		]
+	if http_result == HTTPRequest.RESULT_CANT_CONNECT:
+		var msg = "Cannot reach %s (error RESULT_CANT_CONNECT)" % url
 		return [FAILED, msg]
-
-	elif http_result != OK or status_code != 200:
+	elif http_result == HTTPRequest.RESULT_CANT_RESOLVE:
+		var msg = "Cannot reach %s (error RESULT_CANT_RESOLVE)" % url
+		return [FAILED, msg]
+	elif http_result != OK:
+		var msg = "Bad response from %s (error %s)" % [url, http_result]
+		return [FAILED, msg]
+	elif status_code != 200:
 		var msg = "Bad response from %s (status code: %s)\n%s" % [
 			url,
 			error,

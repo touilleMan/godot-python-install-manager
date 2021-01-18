@@ -16,13 +16,12 @@ func _extract_script_args() -> Array:
 
 
 func _print_usage():
-	var install_manager_addon = Addons.get_install_manager_addon()
 	print("""Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]
 info: Display installed versions info
-self_upgrade [<VERSION>]: Upgrade the install manager
-install [<VERSION>]: Ensure Pythonscript is installed
-upgrade [<VERSION>]: Upgrade the installed version of Pythonscript
-list_versions: List Pythonscript versions compatible with your OS/Godot version 
+self_upgrade [<VERSION>]: Upgrade the install manager (this tool)
+install [<VERSION>]: Ensure Godot Python addon is installed
+upgrade [<VERSION>]: Upgrade the installed version of Godot Python addon
+list_versions: List Godot Python addon versions compatible with your OS/Godot version
 self_list_versions: List install manager versions compatible with your OS/Godot version 
 """)
 
@@ -42,11 +41,12 @@ func _parse_args(args: Array):
 
 
 func _cmd_info() -> int:
-	for addon in Addons.get_addons():
+	for addon in [Addons.new_godot_python_addon(), Addons.new_install_manager_addon()]:
 		var version = addon.get_current_version(true)
 		if version == null:
 			version = "Not installed"
 		print("%s: %s" % [addon.display_name, version])
+		addon.free()
 	return 0
 
 
@@ -56,9 +56,10 @@ func _cmd_self_upgrade(args: Array) -> int:
 	var version = _parse_args(args)
 	if not version:
 		return 1
-	var addon = Addons.get_install_manager_addon()
-	return yield(_upgrade_addon(addon, version), "completed")
-
+	var addon = Addons.new_install_manager_addon()
+	var ret = yield(_upgrade_addon(addon, version), "completed")
+	addon.free()
+	return ret
 
 func _cmd_upgrade(args: Array) -> int:
 	yield(Utils.noop_yield(), "completed")  # Ensure we return a coroutine no matter what
@@ -66,8 +67,10 @@ func _cmd_upgrade(args: Array) -> int:
 	var version = _parse_args(args)
 	if not version:
 		return 1
-	var addon = Addons.get_pythonscript_addon()
-	return yield(_upgrade_addon(addon, version), "completed")
+	var addon = Addons.new_godot_python_addon()
+	var ret = yield(_upgrade_addon(addon, version), "completed")
+	addon.free()
+	return ret
 
 
 func _cmd_install(args: Array) -> int:
@@ -76,14 +79,17 @@ func _cmd_install(args: Array) -> int:
 	var version = _parse_args(args)
 	if not version:
 		return 1
-	var addon = Addons.get_pythonscript_addon()
+	var addon = Addons.new_godot_python_addon()
 	var current_version = addon.get_current_version(true)
 	if current_version != null:
+		addon.free()
 		print("%s is already installed in version %s" % [addon.display_name, current_version])
 		return 0
 
 	else:
-		return yield(_upgrade_addon(addon, version), "completed")
+		var ret = yield(_upgrade_addon(addon, version), "completed")
+		addon.free()
+		return ret
 
 
 func _upgrade_addon(addon, version) -> int:
@@ -123,7 +129,6 @@ func _list_addon_versions(addon) -> int:
 		print("%s (%s)" % [item["str_version"], item["archive_name"]])
 	return 0
 
-
 func _init():
 	var args: Array = _extract_script_args()
 	if args.empty():
@@ -140,9 +145,13 @@ func _init():
 		elif cmd == "upgrade":
 			OS.exit_code = yield(_cmd_upgrade(args), "completed")
 		elif cmd == "list_versions":
-			OS.exit_code = yield(_list_addon_versions(Addons.get_pythonscript_addon()), "completed")
+			var addon = Addons.new_godot_python_addon()
+			OS.exit_code = yield(_list_addon_versions(addon), "completed")
+			addon.free()
 		elif cmd == "self_list_versions":
-			OS.exit_code = yield(_list_addon_versions(Addons.get_install_manager_addon()), "completed")
+			var addon = Addons.new_install_manager_addon()
+			OS.exit_code = yield(_list_addon_versions(addon), "completed")
+			addon.free()
 		else:
 			print("Unknown command `%s`" % cmd)
 			_print_usage()

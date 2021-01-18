@@ -149,7 +149,7 @@ env.Alias("build", env["DIST_ROOT"])
 
 env.Install(env["DIST_ADDON"], env.Glob("pythonscript_install_manager/*"))
 env.Install(env["DIST_ADDON"], "LICENSE")
-env.InstallAs("$DIST_ROOT/README.rst", "README.rst")
+env.Install(env["DIST_ROOT"], "README.rst")
 
 
 ### Release archive ###
