@@ -78,7 +78,6 @@ def resolve_godot_binary_name(major, minor, patch, extra, platform):
 
 
 if not env["godot_binary"]:
-    platform = sys.platform
     is_64bits = sys.maxsize > 2 ** 32
     try:
         godot_binary_download_platform = {
@@ -87,9 +86,9 @@ if not env["godot_binary"]:
             ("win32", True): "win64.exe",
             ("win32", False): "win32.exe",
             ("darwin", True): "osx.64",
-        }[platform, is_64bits]
+        }[sys.platform, is_64bits]
     except KeyError:
-        raise UserError("Don't know what what version of Godot should be downloaded :(")
+        raise UserError("Cannot determine a version of Godot to download for your platform :(")
     godot_download_url = resolve_godot_download_url(
         *env["godot_binary_download_version"], godot_binary_download_platform
     )
@@ -97,7 +96,7 @@ if not env["godot_binary"]:
         *env["godot_binary_download_version"], godot_binary_download_platform
     )
     env["godot_binary"] = File(f"build/{godot_binary_name}")
-    if platform == "osx.64":
+    if godot_binary_download_platform == "osx.64":
         godot_binary_zip_path = "Godot.app/Contents/MacOS/Godot"
     else:
         godot_binary_zip_path = godot_binary_name
