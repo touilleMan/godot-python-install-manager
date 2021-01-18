@@ -17,10 +17,7 @@ class GithubServerMock:
     def __init__(self):
         self.server = None
         self._started = Event()
-        self.plugins = {
-            "godot-python-install-manager": [],
-            "godot-python": [],
-        }
+        self.plugins = {"godot-python-install-manager": [], "godot-python": []}
 
     def add_release(self, name, data_path=None):
         match = re.search(r"^(.*)-([0-9]+\.[0-9]+\.[0-9]+)", name)
@@ -28,23 +25,21 @@ class GithubServerMock:
         plugin_name = match.group(1)
         version = match.group(2)
         tag_name = f"v{version}"
-        version = [int(x) for x in version.split('.')]
+        version = [int(x) for x in version.split(".")]
         releases = self.plugins[plugin_name]
         release_new_asset = {
             "name": name,
-            "browser_download_url": f"http://127.0.0.1:{self.port}/files/{data_path}"
+            "browser_download_url": f"http://127.0.0.1:{self.port}/files/{data_path}",
         }
         for release in releases:
             if release["tag_name"] == tag_name:
                 release["assets"].append(release_new_asset)
                 break
         else:
-            release = {
-                "prerelease": False,
-                "tag_name": tag_name,
-                "assets": [release_new_asset]
-            }
-            self.plugins[plugin_name] = list(reversed(sorted([*releases, release], key=lambda x: x['tag_name'])))
+            release = {"prerelease": False, "tag_name": tag_name, "assets": [release_new_asset]}
+            self.plugins[plugin_name] = list(
+                reversed(sorted([*releases, release], key=lambda x: x["tag_name"]))
+            )
 
     @property
     def port(self):
@@ -65,7 +60,7 @@ class GithubServerMock:
 
     def _do_GET(self, request):
         if request.path.startswith("/files/"):
-            file = Path(request.path[len("/files/"):])
+            file = Path(request.path[len("/files/") :])
             if not file.is_file():
                 request.send_response(404)
                 request.end_headers()
@@ -124,16 +119,12 @@ def test_factory(target, action):
             Delete("$TARGET"),
             Copy(dest="$TARGET", src=env.Dir("test_project")),
             Copy(dest="$TARGET/addons", src="$DIST_ROOT/addons"),
-        ]
+        ],
     )
     env.Clean(target_project_dir, target_project_dir)
     env.AlwaysBuild(target_project_dir)
 
-    env.Command(
-        target=[target],
-        source=[target_project_dir],
-        action=action
-    )
+    env.Command(target=[target], source=[target_project_dir], action=action)
     env.Depends(target, env["godot_binary"])
     env.AlwaysBuild(target)
 
@@ -165,7 +156,7 @@ def run_cmd(cmd, expected_returncode=0):
 
     if isinstance(cmd, str):
         cmd = cmd.split()
-    print(' '.join(cmd))
+    print(" ".join(cmd))
     try:
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as exc:
@@ -200,7 +191,10 @@ def run_cmd(cmd, expected_returncode=0):
 
 
 def run_cli(project_path, cmd, **kwargs):
-    return run_cmd(f"{env['godot_binary']} --verbose --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}", **kwargs)
+    return run_cmd(
+        f"{env['godot_binary']} --verbose --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}",
+        **kwargs,
+    )
 
 
 @test
@@ -208,7 +202,10 @@ def test_cli_no_arguments(target, source, env):
     out = run_cli(source[0], "")
     with out.error_context():
         stdout = out.stdout.decode()
-        assert "Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]" in stdout
+        assert (
+            "Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]"
+            in stdout
+        )
 
 
 @test
@@ -255,11 +252,14 @@ def _list_version_testbed(cmd, plugin, source):
         out = run_cli(source[0], cmd)
         with out.error_context():
             stdout = out.stdout.decode()
-        assert f"""Available versions:
+        assert (
+            f"""Available versions:
 1.1.1 ({plugin}-1.1.1-godot3-{supported_feature}.zip)
 1.1.0 ({plugin}-1.1.0-godot3.zip)
 1.0.0 ({plugin}-1.0.0-godot3.zip)
-""" in stdout
+"""
+            in stdout
+        )
 
 
 @test

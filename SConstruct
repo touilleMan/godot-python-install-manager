@@ -51,11 +51,7 @@ vars.Add(
 )
 
 
-env = Environment(
-    variables=vars,
-    tools=["default", "symlink"],
-    ENV=os.environ,
-)
+env = Environment(variables=vars, tools=["default", "symlink"], ENV=os.environ)
 
 
 Help(vars.GenerateHelpText(env))
@@ -83,7 +79,7 @@ def resolve_godot_binary_name(major, minor, patch, extra, platform):
 
 if not env["godot_binary"]:
     platform = sys.platform
-    is_64bits = sys.maxsize > 2**32
+    is_64bits = sys.maxsize > 2 ** 32
     try:
         godot_binary_download_platform = {
             ("linux", True): "x11.64",
@@ -93,9 +89,7 @@ if not env["godot_binary"]:
             ("darwin", True): "osx.64",
         }[platform, is_64bits]
     except KeyError:
-        raise UserError(
-            "Don't know what what version of Godot should be downloaded :("
-        )
+        raise UserError("Don't know what what version of Godot should be downloaded :(")
     godot_download_url = resolve_godot_download_url(
         *env["godot_binary_download_version"], godot_binary_download_platform
     )
@@ -166,7 +160,7 @@ def generate_release(target, source, env):
 release = env.Command(
     target="build/godot-python-installer-manager-${release_suffix}-godot3.zip",
     source=env["DIST_ROOT"],
-    action=generate_release
+    action=generate_release,
 )
 env.Alias("release", release)
 env.AlwaysBuild("release")

@@ -22,7 +22,7 @@ self_upgrade [<VERSION>]: Upgrade the install manager (this tool)
 install [<VERSION>]: Ensure Godot Python addon is installed
 upgrade [<VERSION>]: Upgrade the installed version of Godot Python addon
 list_versions: List Godot Python addon versions compatible with your OS/Godot version
-self_list_versions: List install manager versions compatible with your OS/Godot version 
+self_list_versions: List install manager versions compatible with your OS/Godot version
 """)
 
 

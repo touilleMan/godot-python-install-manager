@@ -8,14 +8,14 @@ from contextlib import contextmanager
 from buildchain.config import BUILD_DIR
 
 
-TESTS_DIR = BUILD_DIR / 'tests'
+TESTS_DIR = BUILD_DIR / "tests"
 SAMPLE_PROJECT_DIR = Path(__file__).parent / "test_project"
 
 
 def run_cmd(cmd):
     if isinstance(cmd, str):
         cmd = cmd.split()
-    print(' '.join(cmd))
+    print(" ".join(cmd))
     try:
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as exc:
@@ -54,11 +54,14 @@ def run_cmd(cmd):
 
 
 def run_cli(project_path, cmd):
-    return run_cmd(f"{env['godot_binary']} --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}")
+    return run_cmd(
+        f"{env['godot_binary']} --path {project_path} --script res://addons/pythonscript_install_manager/cli.gd {cmd}"
+    )
 
 
 def test(action):
     test_name = action.__name__
+
     def task_generator():
         project_path = TESTS_DIR / test_name
 
@@ -87,13 +90,13 @@ def test(action):
             "actions": [partial(action, project_path=project_path)],
             "uptodate": [False],
             "task_dep": [f"tests:_bootstrap_{test_name}"],
-            "getargs": {
-                "godot_binary": ("fetch_godot", "path")
-            },
+            "getargs": {"godot_binary": ("fetch_godot", "path")},
             "clean": [_clean],
         }
+
     task_generator.__name__ = f"task_{test_name}"
     return task_generator
+
 
 @test
 def test_cli_no_arguments(godot_binary, project_path):
@@ -101,7 +104,10 @@ def test_cli_no_arguments(godot_binary, project_path):
     out = run_cmd(cmd)
     with out.error_context():
         stdout = out.stdout.decode()
-        assert "Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]" in stdout
+        assert (
+            "Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]"
+            in stdout
+        )
 
 
 def task_tests():
@@ -109,9 +115,4 @@ def task_tests():
         yield from test()
 
 
-TASKS = {
-    fn.__name__: fn
-    for fn in [
-        task_tests
-    ]
-}
+TASKS = {fn.__name__: fn for fn in [task_tests]}
