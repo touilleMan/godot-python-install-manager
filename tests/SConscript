@@ -252,14 +252,14 @@ def _list_version_testbed(cmd, plugin, source):
         out = run_cli(source[0], cmd)
         with out.error_context():
             stdout = out.stdout.decode()
-        assert (
-            f"""Available versions:
+            assert (
+                f"""Available versions:
 1.1.1 ({plugin}-1.1.1-godot3-{supported_feature}.zip)
 1.1.0 ({plugin}-1.1.0-godot3.zip)
 1.0.0 ({plugin}-1.0.0-godot3.zip)
 """
-            in stdout
-        )
+                in stdout
+            )
 
 
 @test

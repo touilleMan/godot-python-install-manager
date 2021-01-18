@@ -62,7 +62,7 @@ jobs:
           python --version
           pip install -U pip
           pip install -r requirements.txt
-          supo apt install libpulse0
+          sudo apt install libpulse0
           # Configuration for scons
           echo 'godot_binary = "${{ env.GODOT_BINARY_VERSION }}"' >> custom.py
       - name: 'Start xvfb'
