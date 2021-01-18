@@ -79,7 +79,7 @@ static func rm(path: String) -> int:
 static func exists(path: String) -> int:
 	# !!!! Retuns 0 if the entry exists !!!
 	if OS.has_feature("Windows"):
-		return OS.execute("cmd.exe", ["-c", 'exist "%s"' % path])
+		return OS.execute("cmd.exe", ["/C", 'exist "%s"' % path])
 	else:
 		return OS.execute("sh", ["-c", "test -e '%s'" % path])
 
