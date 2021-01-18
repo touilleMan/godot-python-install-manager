@@ -251,7 +251,7 @@ def _list_version_testbed(cmd, plugin, source):
         gh.add_release(f"{plugin}-1.1.1-godot3-{supported_feature}.zip")
         out = run_cli(source[0], cmd)
         with out.error_context():
-            stdout = out.stdout.decode()
+            stdout = out.stdout.decode().replace("\r\n", "\n")
             assert (
                 f"""Available versions:
 1.1.1 ({plugin}-1.1.1-godot3-{supported_feature}.zip)
