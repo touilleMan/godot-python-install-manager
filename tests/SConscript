@@ -17,7 +17,7 @@ class GithubServerMock:
     def __init__(self):
         self.server = None
         self._started = Event()
-        self.plugins = {"godot-python-install-manager": [], "godot-python": []}
+        self.plugins = {"godot_python_install_manager": [], "godot_python": []}
 
     def add_release(self, name, data_path=None):
         match = re.search(r"^(.*)-([0-9]+\.[0-9]+\.[0-9]+)", name)
