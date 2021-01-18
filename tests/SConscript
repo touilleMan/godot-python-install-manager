@@ -170,13 +170,13 @@ def run_cmd(cmd, expected_returncode=0):
         print(f"stderr: {exc.stderr.decode()}")
         raise UserError(f"Test has failed (returncode: {exc.returncode})") from exc
     else:
-        if out.stderr:
-            print(f"Error !!! Output to stderr is considered as failure !")
+        if "ObjectDB instances leaked at exit" in out.stderr.decode():
+            print(f"Error !!! ObjectDB instances leaked at exit !")
             print()
             print(f"stdout: {out.stdout.decode()}")
             print()
             print(f"stderr: {out.stderr.decode()}")
-            raise UserError(f"Output to stderr is considered as failure !")
+            raise UserError(f"ObjectDB instances leaked at exit !")
     # See https://github.com/godotengine/godot/issues/30207
     if "SCRIPT ERROR:" in out.stdout.decode():
         print(f"Godot error detected !!!")
