@@ -1,14 +1,23 @@
 tool
 extends WindowDialog
 
-const SETTINGS_LOOK_FOR_UPDATE_ON_STARTUP = "pythonscript_install_manager/look_for_update_on_startup"
+const SETTINGS_LOOK_FOR_UPDATE_ON_STARTUP = "godot_python_install_manager/look_for_update_on_startup"
 
 var Addon = preload("addon.gd")
-onready var pythonscript_addon = Addon.new("pythonscript", "Pythonscript", "https://api.github.com/repos/touilleMan/godot-python/releases")
-onready var install_manager_addon = Addon.new("pythonscript_install_manager", "Install Manager", "https://api.github.com/repos/touilleMan/godot-python-install-manager/releases")
-onready var addons = [install_manager_addon, pythonscript_addon]
+onready var godot_python_addon = Addon.new("godot_python", "Godot Python", "https://api.github.com/repos/touilleMan/godot-python/releases")
+onready var install_manager_addon = Addon.new("godot_python_install_manager", "Install Manager", "https://api.github.com/repos/touilleMan/godot-python-install-manager/releases")
+onready var addons = [install_manager_addon, godot_python_addon]
 var _retreive_latest_versions_task = null
 var _upgrade_thread = null
+
+
+func _exit_tree():
+	# Teardown
+	godot_python_addon.free()
+	godot_python_addon = null
+	install_manager_addon.free()
+	install_manager_addon = null
+	addons = null
 
 
 func _ready():
@@ -18,8 +27,8 @@ func _ready():
 #        "type": TYPE_STRING,
 #        "hint": PROPERTY_HINT_NONE,
 #        "hint_string": (
-#            "Force the python install manager to download a specific version" +
-#            " of Pythonscript instead the lastest available.\n" +
+#            "Force the python Install Manager to download a specific version" +
+#            " of Godot Python instead the lastest available.\n" +
 #            "Possibles values: `latest`, `0.42.3`, `1.2`, `1`"
 #        )
 #    })
@@ -29,12 +38,12 @@ func _ready():
 		"name": SETTINGS_LOOK_FOR_UPDATE_ON_STARTUP,
 		"type": TYPE_BOOL,
 		"hint": PROPERTY_HINT_NONE,
-		"hint_string": "Check for pythonscript and install manager updates on startup"
+		"hint_string": "Check for Godot Python and Install Manager updates on startup"
 	})
 
 	if ProjectSettings.get_setting(SETTINGS_LOOK_FOR_UPDATE_ON_STARTUP):
 		yield(_retreive_latest_versions(), "completed")
-		if install_manager_addon.upgrade_needed() or pythonscript_addon.upgrade_needed():
+		if install_manager_addon.upgrade_needed() or godot_python_addon.upgrade_needed():
 			$".".popup_centered()
 	$".".popup_centered()
 

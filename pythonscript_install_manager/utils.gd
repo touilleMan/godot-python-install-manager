@@ -43,7 +43,7 @@ static func parse_version(str_version: String):
 			version.append(int(x))
 		else:
 			return null
-	if len(version) != 3:
+	if len(version) == 3:
 		return version
 	else:
 		return null

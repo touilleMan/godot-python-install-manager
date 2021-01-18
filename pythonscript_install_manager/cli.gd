@@ -16,7 +16,7 @@ func _extract_script_args() -> Array:
 
 
 func _print_usage():
-	print("""Usage: godot [--path <project_path>] [--no-window] --script res://addons/pythonscript_install_manager/cli.gd [options]
+	print("""Usage: godot [--path <project_path>] [--no-window] --script res://addons/godot_python_install_manager/cli.gd [options]
 info: Display installed versions info
 self_upgrade [<VERSION>]: Upgrade the install manager (this tool)
 install [<VERSION>]: Ensure Godot Python addon is installed

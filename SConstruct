@@ -15,7 +15,7 @@ EnsureSConsVersion(3, 0)
 
 
 def extract_version():
-    src = open("pythonscript_install_manager/plugin.cfg").read()
+    src = open("godot_python_install_manager/plugin.cfg").read()
     return re.search(r"version=\"(.*)\"", src).group(1)
 
 
@@ -58,7 +58,7 @@ Help(vars.GenerateHelpText(env))
 
 
 env["DIST_ROOT"] = Dir(f"build/dist")
-env["DIST_ADDON"] = Dir(f"{env['DIST_ROOT']}/addons/pythonscript_install_manager")
+env["DIST_ADDON"] = Dir(f"{env['DIST_ROOT']}/addons/godot_python_install_manager")
 
 
 ### Godot binary (to run tests) ###
@@ -140,7 +140,7 @@ env.Alias("build", env["DIST_ROOT"])
 ### Build dist ###
 
 
-env.Install(env["DIST_ADDON"], env.Glob("pythonscript_install_manager/*"))
+env.Install(env["DIST_ADDON"], env.Glob("godot_python_install_manager/*"))
 env.Install(env["DIST_ADDON"], "LICENSE")
 env.Install(env["DIST_ROOT"], "README.rst")
 
